@@ -34,7 +34,9 @@ This plugin works with every browser supporting (natively or via polyfills) requ
 Polyfills may lower the version needed to the one specified inside brackets. These informations should be correct, but I did not verify it.
 
 ## Demos
-Take a look at a demo on <http://open-source.jacek-nowacki.net/vanilla.kinetic/>.
+
+@TODO Put demo online
+Demo included in repository (`demo-vanilla.html`)
 
 Filtering Clickable elements
 ---
