@@ -1,14 +1,5 @@
 (function() {
-
-    var _raf =
-        window.requestAnimationFrame ||
-        window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame ||
-        window.oRequestAnimationFrame ||
-        window.msRequestAnimationFrame ||
-        function(callback) {
-            setTimeout(callback, 1000/60);
-        };
+    var _raf = window.requestAnimationFrame;
 
     var _isTouch = 'ontouchend' in document;
 
