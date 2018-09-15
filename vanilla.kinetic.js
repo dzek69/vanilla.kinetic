@@ -146,7 +146,12 @@
             touchStart: function(e) {
                 var touch;
                 if (self._useTarget(e.target, e)) {
-                    touch = e.originalEvent.touches[0];
+                    if (e.originalEvent === undefined) {
+                        touch = e.touches[0];
+                    } else {
+                        touch = e.originalEvent.touches[0];
+                    }
+                    
                     self.threshold = self._threshold(e.target, e);
                     self._start(touch.clientX, touch.clientY);
                     e.stopPropagation();
@@ -155,7 +160,12 @@
             touchMove: function(e) {
                 var touch;
                 if (self.mouseDown) {
-                    touch = e.originalEvent.touches[0];
+                    if (e.originalEvent === undefined) {
+                        touch = e.touches[0];
+                    } else {
+                        touch = e.originalEvent.touches[0];
+                    }
+                    
                     self._inputmove(touch.clientX, touch.clientY);
                     if (e.preventDefault) {
                         e.preventDefault();
