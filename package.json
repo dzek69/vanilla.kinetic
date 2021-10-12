@@ -1,0 +1,74 @@
+{
+  "name": "vanilla-kinetic",
+  "version": "3.0.0-alpha.1",
+  "repository": "git@github.com:dzek69/vanilla.kinetic.git",
+  "author": "Jacek Nowacki, Dave Taylor",
+  "license": "MIT",
+  "scripts": {
+    "test": "NODE_ENV=test jest",
+    "docs": "typedoc src/index.ts --out docs --listInvalidSymbolLinks --includes tutorials --theme pages-plugin --includeVersion",
+    "compile": "yarn compile:esm && yarn compile:cjs",
+    "compile:esm": "rm -rf esm && tsc && node ./build-scripts/compile.esm.after.mjs",
+    "compile:cjs": "rm -rf dist && tsc --project tsconfig.cjs.json && node ./build-scripts/compile.cjs.after.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx,.mjs",
+    "lint:fix": "yarn lint --fix",
+    "prepack": "yarn compile",
+    "prepublishOnly": "yarn audit && yarn lint && yarn test && yarn docs",
+    "start:dev": "next dev",
+    "start:dev:compatibility": "TS_NODE_FILES=true yarn start:dev"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "default": "./esm/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./esm/index.d.ts",
+  "module": "./esm/index.js",
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.10",
+    "@babel/preset-env": "^7.12.11",
+    "@babel/preset-typescript": "^7.12.7",
+    "@dzek69/eslint-config-base": "^2.1.0",
+    "@dzek69/eslint-config-react": "^1.2.2",
+    "@dzek69/eslint-config-typescript": "^0.4.0",
+    "@types/jest": "^26.0.23",
+    "@types/react": "^17.0.4",
+    "@types/react-dom": "^17.0.3",
+    "@typescript-eslint/eslint-plugin": "^4.11.1",
+    "@typescript-eslint/parser": "^4.11.1",
+    "babel-plugin-module-extension": "^0.1.3",
+    "babel-plugin-module-resolver": "^4.1.0",
+    "classnames": "^2.3.1",
+    "eslint": "^7.32.0",
+    "eslint-plugin-react": "^7.24.0",
+    "fs-extra": "^9.0.1",
+    "husky": "^4.3.0",
+    "jest": "^27.0.6",
+    "must": "^0.13.4",
+    "next": "^11.1.0",
+    "nodemon": "^2.0.6",
+    "sass": "^1.35.2",
+    "ts-node": "^9.0.0",
+    "typedoc": "^0.21.2",
+    "typedoc-plugin-pages-fork-fork": "^0.0.3",
+    "typescript": "^4.2.4"
+  },
+  "husky": {
+    "hooks": {
+      "pre-push": "yarn prepublishOnly && yarn compile"
+    }
+  },
+  "libraryTemplate": {
+    "version": "3.4.0",
+    "language": "typescript",
+    "fixDefaultForCommonJS": true,
+    "jsx": true
+  }
+}

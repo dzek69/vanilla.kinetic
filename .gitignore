@@ -1,0 +1,10 @@
+/.idea/
+/docs/
+/dist/
+/esm/
+/node_modules/
+
+/.next
+/*.tgz
+*.log
+*.tsbuildinfo

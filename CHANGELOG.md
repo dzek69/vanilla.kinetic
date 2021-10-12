@@ -1,0 +1,20 @@
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## [UNRELEASED]
+(nothing yet)
+
+## [3.0.0-alpha.1] - 2021-10-07
+### Added
+- npm package
+### Changed
+- rewritten for modern browsers, with TypeScript, with api still very similar but not identical
+
+## [2.2.1.1v] - 2016-01-30
+### Added
+- First vanillaJS-based version released
+
+### 2.2.1 and below
+- See original [repo](https://github.com/davetayls/jquery.kinetic/)
