@@ -1,41 +1,25 @@
 import React from "react";
-import { VanillaKinetic } from "..";
-
-// @ts-expect-error Idk why TS started complaining here on Next.js project.
-import styles from "./index.module.scss";
+import { Kinetic } from "../demo/Kinetic.js";
 
 interface Props {}
 
-class IndexComp extends React.Component<Props> {
+interface State {
+    zoom: number;
+    zoomStep: number;
+}
+
+class IndexComp extends React.Component<Props, State> {
     public constructor(props: Props) {
         super(props);
+
+        this.state = {
+            zoom: 1,
+            zoomStep: 0,
+        };
     }
 
-    public shouldComponentUpdate() {
-        return false;
-    }
-
-    private _mapInstance?: VanillaKinetic | null;
-
-    private readonly onContainerRef = (ref: HTMLDivElement | null) => {
-        if (!ref) {
-            this._mapInstance?.destroy();
-            this._mapInstance = null;
-            return;
-        }
-        this._mapInstance = new VanillaKinetic(ref, {});
-    };
-
-    private readonly _handleAttachDetach = () => {
-        if (!this._mapInstance) {
-            return;
-        }
-        if (this._mapInstance.active) {
-            this._mapInstance.destroy();
-        }
-        else {
-            this._mapInstance.reinitialize();
-        }
+    private readonly _handleZoom = (zoom: number, zoomStep: number) => {
+        this.setState({ zoom, zoomStep });
     };
 
     public render() {
@@ -47,11 +31,10 @@ class IndexComp extends React.Component<Props> {
                     Test<br />
                     Test<br />
                 </div>
-                <button onClick={this._handleAttachDetach}>attach / detach</button>
-                <div ref={this.onContainerRef} className={styles.container}>
-                    <div className={styles.middle}>
-                        <img src={"https://i.imgur.com/6UhKWdy.jpeg"} alt={"Wallpaper"} />
-                    </div>
+                <Kinetic onZoom={this._handleZoom} />
+                <div>
+                    Zoom multiplier: {this.state.zoom}<br />
+                    Zoom step: {this.state.zoomStep}
                 </div>
                 <div>
                     Wallpaper from: <a href={"https://imgur.com/t/high_quality/cQnOUbq"}>here</a>

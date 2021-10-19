@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [UNRELEASED]
 (nothing yet)
 
+## [3.0.0-alpha.2] - 2021-10-19
+### Added
+- "zoom" event emitting
+- max zoom config
+- helper method to update scrollable area if needed
+- setting zoom level + "fit" option
+- setting scroll position
+! not removing all events on destroy
+
 ## [3.0.0-alpha.1] - 2021-10-07
 ### Added
 - npm package

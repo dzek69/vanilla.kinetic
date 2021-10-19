@@ -1,5 +1,8 @@
 /* eslint-disable max-lines */
 
+import { EventEmitter } from "eventemitter3";
+import type { KineticEvents } from "./types";
+
 interface Settings {
     /**
      * Should momentum be automatically decelerated?
@@ -58,6 +61,7 @@ interface Settings {
         right: string;
 
     };
+    maxZoomStep: number;
 }
 
 const defaultSettings: Settings = {
@@ -92,6 +96,7 @@ const defaultSettings: Settings = {
         left: "kinetic--decelerating-left",
         right: "kinetic--decelerating-right",
     },
+    maxZoomStep: 15,
 };
 
 const _isTouch = () => "ontouchend" in document;
@@ -117,7 +122,7 @@ const getOffset = (evt: MouseEvent, parentElement: HTMLElement) => {
 const ZOOM_MULTIPLIER = 1.1;
 
 // TODO remove arrow functions to prevent creating new methods on instance when not needed
-class VanillaKinetic {
+class VanillaKinetic extends EventEmitter<KineticEvents> {
     private _settings: Settings;
 
     private readonly _el: HTMLElement;
@@ -184,6 +189,7 @@ class VanillaKinetic {
     private _active: boolean;
 
     public constructor(element: HTMLElement, settings: Partial<Settings>) {
+        super();
         this._settings = {
             ...defaultSettings,
             ...settings,
@@ -278,6 +284,10 @@ class VanillaKinetic {
         ];
 
         this._active = true;
+    }
+
+    public setNaturalDimensions(width: number, height: number) {
+        this._naturalContentDimensions = [width, height];
     }
 
     // eslint-disable-next-line max-lines-per-function
@@ -406,6 +416,8 @@ class VanillaKinetic {
         el.removeEventListener("scroll", this._events.scroll, false);
         el.removeEventListener("selectstart", this._events.selectStart, false);
         el.removeEventListener("dragstart", this._events.dragStart, false);
+
+        el.removeEventListener("wheel", this._events.wheel, true);
     };
 
     private readonly _useTarget = (target: EventTarget | null, evt: Event) => {
@@ -643,28 +655,48 @@ class VanillaKinetic {
         this._settings.decelerate = true;
     };
 
-    private static readonly _calcZoomLevel = (zoom: number) => {
-        return zoom > 0 ? Math.pow(ZOOM_MULTIPLIER, zoom) : 1 / Math.pow(ZOOM_MULTIPLIER, Math.abs(zoom));
+    private readonly _calcZoomMultiplier = (zoomStep: number | "fit") => {
+        if (zoomStep === "fit") {
+            const w = this._el.clientWidth / this._naturalContentDimensions[0];
+            const h = this._el.clientHeight / this._naturalContentDimensions[1];
+
+            return Math.max(w, h);
+        }
+        return zoomStep > 0 ? Math.pow(ZOOM_MULTIPLIER, zoomStep) : 1 / Math.pow(ZOOM_MULTIPLIER, Math.abs(zoomStep));
+    };
+
+    private readonly _calcZoomStep = (zoomMultiplier: number) => {
+        if (zoomMultiplier < 1) {
+            return -Math.round(Math.log(1 / zoomMultiplier) / Math.log(ZOOM_MULTIPLIER));
+        }
+        return Math.round(Math.log(zoomMultiplier) / Math.log(ZOOM_MULTIPLIER));
     };
 
     // eslint-disable-next-line max-statements
-    private readonly _applyZoom = (targetZoom: number, prevZoom: number, x?: number, y?: number) => {
+    private readonly _applyZoom = (
+        targetZoomStep: number | "fit", currentZoomStep: number, x?: number, y?: number,
+    ): [boolean, number] => {
+        if (targetZoomStep > this._settings.maxZoomStep) {
+            return [false, currentZoomStep];
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         const px = x ?? this._el.clientWidth / 2;
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
         const py = y ?? this._el.clientHeight / 2;
 
-        const zoomLevel = VanillaKinetic._calcZoomLevel(targetZoom);
-        const prevZoomLevel = VanillaKinetic._calcZoomLevel(prevZoom);
+        const targetZoomMultiplier = this._calcZoomMultiplier(targetZoomStep);
+        const currentZoomMultiplier = this._calcZoomMultiplier(currentZoomStep);
+        const targetZoomStepNum = this._calcZoomStep(targetZoomMultiplier);
 
         const middle = this._el.children[0] as HTMLDivElement;
         const [natW, natH] = this._naturalContentDimensions;
 
-        const newWidth = natW * zoomLevel;
-        const newHeight = natH * zoomLevel;
+        const newWidth = Math.round(natW * targetZoomMultiplier);
+        const newHeight = Math.round(natH * targetZoomMultiplier);
 
-        if (newWidth < this._el.clientWidth || newHeight < this._el.clientHeight) {
-            return false;
+        if (targetZoomStep !== "fit" && (newWidth < this._el.clientWidth || newHeight < this._el.clientHeight)) {
+            return [false, currentZoomStep];
         }
 
         const sx = this._el.scrollLeft;
@@ -673,34 +705,46 @@ class VanillaKinetic {
         const ppx = px + sx;
         const ppy = py + sy;
 
-        const rpx = ppx / prevZoomLevel;
-        const rpy = ppy / prevZoomLevel;
+        const rpx = ppx / currentZoomMultiplier;
+        const rpy = ppy / currentZoomMultiplier;
 
-        const nsx = (rpx * zoomLevel) - px;
-        const nsy = (rpy * zoomLevel) - py;
+        const nsx = (rpx * targetZoomMultiplier) - px;
+        const nsy = (rpy * targetZoomMultiplier) - py;
 
-        middle.style.height = `${natH * zoomLevel}px`;
-        middle.style.transform = `scale(${zoomLevel})`;
+        if (targetZoomMultiplier < 1) {
+            middle.style.height = `${natH * targetZoomMultiplier}px`;
+        }
+        else {
+            middle.style.removeProperty("height");
+        }
+        middle.style.transform = `scale(${targetZoomMultiplier})`;
 
         this._el.scrollLeft = nsx;
         this._el.scrollTop = nsy;
 
-        return true;
+        this.emit("zoom", targetZoomMultiplier, targetZoomStepNum);
+
+        return [true, targetZoomStepNum];
     };
 
     public zoomIn = (x?: number, y?: number) => {
-        const zoomed = this._applyZoom(this._zoom + 1, this._zoom, x, y);
+        const [zoomed, newZoomStep] = this._applyZoom(this._zoom + 1, this._zoom, x, y);
         if (zoomed) {
-            this._zoom++;
+            this._zoom = newZoomStep;
         }
     };
 
     public zoomOut = (x?: number, y?: number) => {
-        const zoomed = this._applyZoom(this._zoom - 1, this._zoom, x, y);
+        const [zoomed, newZoomStep] = this._applyZoom(this._zoom - 1, this._zoom, x, y);
         if (zoomed) {
-            this._zoom--;
+            this._zoom = newZoomStep;
         }
     };
+
+    public setZoom(value: number | "fit", x?: number, y?: number) {
+        const [, newZoomStep] = this._applyZoom(value, this._zoom, x, y);
+        this._zoom = newZoomStep;
+    }
 
     public reinitialize() {
         if (this._active) {
@@ -720,8 +764,41 @@ class VanillaKinetic {
         // @TODO cleanup trigger hardware
         this._deinit();
         this._detachListeners();
+        this.removeAllListeners();
 
         this._active = false;
+    }
+
+    public center() {
+        this.scrollTo("50%", "50%");
+    }
+
+    private _getPos(value: number | string, horizontal: boolean) {
+        if (typeof value === "number") {
+            return value;
+        }
+
+        const scrollableArea
+            = (horizontal ? this._el.scrollWidth : this._el.scrollHeight)
+            - (horizontal ? this._el.clientWidth : this._el.clientHeight);
+
+        if (scrollableArea <= 0) {
+            return 0;
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+        const v = Number(value.substr(0, value.length - 1)) / 100;
+        return scrollableArea * v;
+    }
+
+    public scrollTo(x: number | string, y: number | string) {
+        this.stop();
+
+        const xx = this._getPos(x, true);
+        const yy = this._getPos(y, false);
+
+        this._el.scrollLeft = xx;
+        this._el.scrollTop = yy;
     }
 }
 
