@@ -60,10 +60,26 @@ class Kinetic extends React.Component<Props> {
         }
     };
 
+    private readonly _handleZoom25 = () => {
+        if (!this._mapInstance) {
+            return;
+        }
+
+        this._mapInstance.setZoom("fit");
+        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+        for (let i = 0; i <= 30; i++) {
+            setTimeout(() => {
+                this._mapInstance?.zoomIn("25%", "25%");
+                // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+            }, 16 * i);
+        }
+    };
+
     public render() {
         return (
             <>
                 <button onClick={this._handleAttachDetach}>attach / detach</button>
+                <button onClick={this._handleZoom25}>Zoom demo on 25% X, Y position</button>
                 <div ref={this.onContainerRef} className={styles.container}>
                     <div className={styles.middle}>
                         <img src={"https://i.imgur.com/6UhKWdy.jpeg"} alt={"Wallpaper"} onLoad={this.handleImageLoad} />

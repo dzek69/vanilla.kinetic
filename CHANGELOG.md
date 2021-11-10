@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [UNRELEASED]
 (nothing yet)
 
+## [3.0.0-alpha.3] - 2021-11-10
+### Added
+- zooming by 2 fingers touch
+- ability to programmatically zoom on percentage-defined X, Y point of current view
+
 ## [3.0.0-alpha.2] - 2021-10-19
 ### Added
 - "zoom" event emitting

@@ -64,6 +64,8 @@ interface Settings {
     maxZoomStep: number;
 }
 
+type Percent = `${number}%`;
+
 const defaultSettings: Settings = {
     // @todo use a value, if given then it's enabled, if not then disabled
     decelerate: true,
@@ -99,9 +101,7 @@ const defaultSettings: Settings = {
     maxZoomStep: 15,
 };
 
-const _isTouch = () => "ontouchend" in document;
-
-const getOffset = (evt: MouseEvent, parentElement: HTMLElement) => {
+const getOffset = (evt: MouseEvent | Touch, parentElement: HTMLElement) => {
     let el: HTMLElement | null = parentElement,
         x = 0,
         y = 0;
@@ -120,8 +120,13 @@ const getOffset = (evt: MouseEvent, parentElement: HTMLElement) => {
 };
 
 const ZOOM_MULTIPLIER = 1.1;
+const TOUCH_DISTANCE_TO_ZOOM = 10;
 
 // TODO remove arrow functions to prevent creating new methods on instance when not needed
+
+/**
+ * Vanilla Kinetic main class
+ */
 class VanillaKinetic extends EventEmitter<KineticEvents> {
     private _settings: Settings;
 
@@ -167,6 +172,7 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
     private _events: {
         touchStart: (e: TouchEvent) => void;
         touchMove: (e: TouchEvent) => void;
+        touchEnd: (e: TouchEvent) => void;
         inputDown: (e: MouseEvent) => void;
         inputEnd: (e: TouchEvent | MouseEvent) => void;
         inputMove: (e: MouseEvent) => void;
@@ -187,6 +193,14 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
     private _zoom: number;
 
     private _active: boolean;
+
+    private _currentTouches: number = 0;
+
+    private _touchCenterPerc: [number, number] = [0, 0];
+
+    private _touchInitialDistance: number = 0;
+
+    private _touchLastDistance: number = 0;
 
     public constructor(element: HTMLElement, settings: Partial<Settings>) {
         super();
@@ -290,10 +304,43 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
         this._naturalContentDimensions = [width, height];
     }
 
+    private static readonly getDistanceBetweenPoints = (a: [number, number], b: [number, number]) => {
+        const aa = a[0] - b[0];
+        const bb = a[1] - b[1];
+        return Math.sqrt((aa * aa) + (bb * bb));
+    };
+
     // eslint-disable-next-line max-lines-per-function
     private _initEvents() {
         this._events = {
+            // eslint-disable-next-line max-statements
             touchStart: (e) => {
+                this._currentTouches = e.touches.length;
+                const touch0 = getOffset(e.touches[0], this._el.children[0] as HTMLElement);
+
+                // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+                if (this._currentTouches === 2) {
+                    const touch1 = getOffset(e.touches[1], this._el.children[1] as HTMLElement);
+                    const xx = [touch0.x, touch1.x];
+                    const yy = [touch0.y, touch1.y];
+
+                    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+                    const xCenter = Math.round(Math.min(...xx) + ((Math.max(...xx) - Math.min(...xx)) / 2));
+                    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+                    const yCenter = Math.round(Math.min(...yy) + ((Math.max(...yy) - Math.min(...yy)) / 2));
+
+                    this._touchCenterPerc = [
+                        xCenter / this._el.clientWidth,
+                        yCenter / this._el.clientHeight,
+                    ];
+
+                    this._touchInitialDistance = VanillaKinetic.getDistanceBetweenPoints(
+                        [touch0.x, touch0.y],
+                        [touch1.x, touch1.y],
+                    );
+                    this._touchLastDistance = this._touchInitialDistance;
+                }
+
                 if (this._useTarget(e.target, e)) {
                     const touch = e.touches[0];
                     this._threshold = this._calcThreshold(e.target, e);
@@ -301,12 +348,63 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                     e.stopPropagation();
                 }
             },
+            // eslint-disable-next-line max-statements
             touchMove: e => {
                 let touch;
                 if (this._mouseDown) {
-                    touch = e.touches[0];
-                    this._inputmove(touch.clientX, touch.clientY);
+                    if (this._currentTouches === 1) {
+                        touch = e.touches[0];
+                        this._inputmove(touch.clientX, touch.clientY);
+                        e.preventDefault();
+                    }
+
+                    // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+                    else if (this._currentTouches === 2) {
+                        e.preventDefault();
+
+                        const touch0 = getOffset(e.touches[0], this._el.children[0] as HTMLElement);
+                        const touch1 = getOffset(e.touches[1], this._el.children[1] as HTMLElement);
+
+                        const currentDistance = VanillaKinetic.getDistanceBetweenPoints(
+                            [touch0.x, touch0.y],
+                            [touch1.x, touch1.y],
+                        );
+
+                        const prevDistanceFromStart = this._touchLastDistance - this._touchInitialDistance;
+                        const distanceFromStart = currentDistance - this._touchInitialDistance;
+
+                        const prev = Math.floor(prevDistanceFromStart / TOUCH_DISTANCE_TO_ZOOM);
+                        const curr = Math.floor(distanceFromStart / TOUCH_DISTANCE_TO_ZOOM);
+                        const diff = prev - curr;
+
+                        if (diff > 0) {
+                            for (let i = 0; i < Math.abs(diff); i++) {
+                                // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+                                this.zoomOut(...this._touchCenterPerc.map((v): Percent => `${v * 100}%`));
+                            }
+                        }
+                        else if (diff < 0) {
+                            for (let i = 0; i < Math.abs(diff); i++) {
+                                // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+                                this.zoomIn(...this._touchCenterPerc.map((v): Percent => `${v * 100}%`));
+                            }
+                        }
+
+                        this._touchLastDistance = currentDistance;
+                    }
+                }
+            },
+            touchEnd: e => {
+                this._currentTouches = e.touches.length;
+                if (this._currentTouches === 0) {
+                    this._end();
                     e.preventDefault();
+                    // ^ this will prevent calling inputEnd as well, without it an unwanted velocity will be set on
+                    // just tap
+                }
+                else if (this._currentTouches === 1) {
+                    const touch = e.touches[0];
+                    this._start(touch.clientX, touch.clientY);
                 }
             },
             inputDown: e => {
@@ -381,11 +479,9 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
     private readonly _attachListeners = () => {
         const el = this._el;
 
-        if (_isTouch()) { // @TODO attach always?
-            el.addEventListener("touchstart", this._events.touchStart, false);
-            el.addEventListener("touchend", this._events.inputEnd, false);
-            el.addEventListener("touchmove", this._events.touchMove, false);
-        }
+        el.addEventListener("touchstart", this._events.touchStart, false);
+        el.addEventListener("touchend", this._events.touchEnd, false);
+        el.addEventListener("touchmove", this._events.touchMove, false);
 
         el.addEventListener("mousedown", this._events.inputDown, false);
         el.addEventListener("mouseup", this._events.inputEnd, false);
@@ -402,11 +498,9 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
     private readonly _detachListeners = () => {
         const el = this._el;
 
-        if (_isTouch()) {
-            el.removeEventListener("touchstart", this._events.touchStart, false);
-            el.removeEventListener("touchend", this._events.inputEnd, false);
-            el.removeEventListener("touchmove", this._events.touchMove, false);
-        }
+        el.removeEventListener("touchstart", this._events.touchStart, false);
+        el.removeEventListener("touchend", this._events.touchEnd, false);
+        el.removeEventListener("touchmove", this._events.touchMove, false);
 
         el.removeEventListener("mousedown", this._events.inputDown, false);
         el.removeEventListener("mouseup", this._events.inputEnd, false);
@@ -674,16 +768,25 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
 
     // eslint-disable-next-line max-statements
     private readonly _applyZoom = (
-        targetZoomStep: number | "fit", currentZoomStep: number, x?: number, y?: number,
+        targetZoomStep: number | "fit", currentZoomStep: number, x?: number | Percent, y?: number | Percent,
     ): [boolean, number] => {
         if (targetZoomStep > this._settings.maxZoomStep) {
             return [false, currentZoomStep];
         }
 
         // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        const px = x ?? this._el.clientWidth / 2;
-        // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-        const py = y ?? this._el.clientHeight / 2;
+        let px = x ?? this._el.clientWidth / 2,
+            // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+            py = y ?? this._el.clientHeight / 2;
+
+        if (typeof px === "string") {
+            // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+            px = this._el.clientWidth * (Number(px.substring(0, px.length - 1)) / 100);
+        }
+        if (typeof py === "string") {
+            // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+            py = this._el.clientHeight * (Number(py.substring(0, py.length - 1)) / 100);
+        }
 
         const targetZoomMultiplier = this._calcZoomMultiplier(targetZoomStep);
         const currentZoomMultiplier = this._calcZoomMultiplier(currentZoomStep);
@@ -727,21 +830,21 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
         return [true, targetZoomStepNum];
     };
 
-    public zoomIn = (x?: number, y?: number) => {
+    public zoomIn = (x?: number | Percent, y?: number | Percent) => {
         const [zoomed, newZoomStep] = this._applyZoom(this._zoom + 1, this._zoom, x, y);
         if (zoomed) {
             this._zoom = newZoomStep;
         }
     };
 
-    public zoomOut = (x?: number, y?: number) => {
+    public zoomOut = (x?: number | Percent, y?: number | Percent) => {
         const [zoomed, newZoomStep] = this._applyZoom(this._zoom - 1, this._zoom, x, y);
         if (zoomed) {
             this._zoom = newZoomStep;
         }
     };
 
-    public setZoom(value: number | "fit", x?: number, y?: number) {
+    public setZoom(value: number | "fit", x?: number | Percent, y?: number | Percent) {
         const [, newZoomStep] = this._applyZoom(value, this._zoom, x, y);
         this._zoom = newZoomStep;
     }
