@@ -1,5 +1,6 @@
 import React from "react";
 import { Kinetic } from "../demo/Kinetic.js";
+import { TouchTest } from "../demo/TouchTest";
 
 interface Props {}
 
@@ -36,6 +37,7 @@ class IndexComp extends React.Component<Props, State> {
                     Zoom multiplier: {this.state.zoom}<br />
                     Zoom step: {this.state.zoomStep}
                 </div>
+                <TouchTest />
                 <div>
                     Wallpaper from: <a href={"https://imgur.com/t/high_quality/cQnOUbq"}>here</a>
                 </div>

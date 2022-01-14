@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [UNRELEASED]
 (nothing yet)
 
+## [3.0.0-alpha.4] - 2022-01-14
+### Added
+- ability to pass events to some elements
+
 ## [3.0.0-alpha.3] - 2021-11-10
 ### Added
 - zooming by 2 fingers touch

@@ -62,6 +62,7 @@ interface Settings {
 
     };
     maxZoomStep: number;
+    filterTarget?: (evt: Event) => boolean;
 }
 
 type Percent = `${number}%`;
@@ -315,6 +316,10 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
         this._events = {
             // eslint-disable-next-line max-statements
             touchStart: (e) => {
+                if (!this._useTarget(e)) {
+                    return;
+                }
+
                 this._currentTouches = e.touches.length;
                 const touch0 = getOffset(e.touches[0], this._el.children[0] as HTMLElement);
 
@@ -341,12 +346,10 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                     this._touchLastDistance = this._touchInitialDistance;
                 }
 
-                if (this._useTarget(e.target, e)) {
-                    const touch = e.touches[0];
-                    this._threshold = this._calcThreshold(e.target, e);
-                    this._start(touch.clientX, touch.clientY);
-                    e.stopPropagation();
-                }
+                const touch = e.touches[0];
+                this._threshold = this._calcThreshold(e.target, e);
+                this._start(touch.clientX, touch.clientY);
+                e.stopPropagation();
             },
             // eslint-disable-next-line max-statements
             touchMove: e => {
@@ -395,6 +398,10 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                 }
             },
             touchEnd: e => {
+                if (!this._useTarget(e)) {
+                    return;
+                }
+
                 this._currentTouches = e.touches.length;
                 if (this._currentTouches === 0) {
                     this._end();
@@ -408,25 +415,28 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                 }
             },
             inputDown: e => {
-                if (this._useTarget(e.target, e)) {
-                    this._threshold = this._calcThreshold(e.target, e);
-                    this._start(e.clientX, e.clientY);
-
-                    if (e.target instanceof HTMLElement) {
-                        this._elementFocused = e.target;
-                        if (e.target.nodeName === "IMG") {
-                            e.preventDefault();
-                        }
-                    }
-                    e.stopPropagation();
+                if (!this._useTarget(e)) {
+                    return;
                 }
+
+                this._threshold = this._calcThreshold(e.target, e);
+                this._start(e.clientX, e.clientY);
+
+                if (e.target instanceof HTMLElement) {
+                    this._elementFocused = e.target;
+                    if (e.target.nodeName === "IMG") {
+                        e.preventDefault();
+                    }
+                }
+                e.stopPropagation();
             },
             inputEnd: e => {
-                if (this._useTarget(e.target, e)) {
-                    this._end();
-                    this._elementFocused = null;
-                    e.preventDefault();
+                if (!this._useTarget(e)) {
+                    return;
                 }
+                this._end();
+                this._elementFocused = null;
+                e.preventDefault();
             },
             inputMove: e => {
                 if (this._mouseDown) {
@@ -442,6 +452,10 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                 e.preventDefault();
             },
             wheel: e => {
+                if (!this._useTarget(e)) {
+                    return;
+                }
+
                 const offset = getOffset(e, this._el.children[0] as HTMLElement);
                 if (e.deltaY < 0) {
                     this.zoomIn(offset.x, offset.y);
@@ -456,20 +470,24 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                     e.stopPropagation();
                 }
             },
-            dragStart: e => {
-                if (this._useTarget(e.target, e) && this._elementFocused) {
-                    e.preventDefault();
-                    e.stopPropagation();
+            dragStart: e => { // prevent dragging images in IE
+                if (!this._useTarget(e) || !this._elementFocused) {
+                    return;
                 }
+
+                e.preventDefault();
+                e.stopPropagation();
             },
             selectStart: e => {
+                if (!this._useTarget(e)) {
+                    return;
+                }
+
                 // if (typeof this.settings.selectStart === "function") {
                 //     return this.settings.selectStart.apply(self, arguments);
                 // }
-                if (this._useTarget(e.target, e)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
+                e.preventDefault();
+                e.stopPropagation();
             },
         };
 
@@ -514,11 +532,10 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
         el.removeEventListener("wheel", this._events.wheel, true);
     };
 
-    private readonly _useTarget = (target: EventTarget | null, evt: Event) => {
-        // @TODO add filtering support
-        // if (typeof this.settings.filterTarget === "function") {
-        //     return this.settings.filterTarget.call(this, target, event) !== false;
-        // }
+    private readonly _useTarget = (evt: Event) => {
+        if (typeof this._settings.filterTarget === "function") {
+            return this._settings.filterTarget(evt);
+        }
         return true;
     };
 

@@ -2,8 +2,7 @@ import type { SyntheticEvent } from "react";
 import React from "react";
 import { VanillaKinetic } from "..";
 
-// @ts-expect-error Idk why TS started complaining here on Next.js project.
-import styles from "./index.module.scss";
+import styles from "./Kinetic.module.scss";
 
 interface Props {
     onZoom: (zoomMultiplier: number, zoomLevel: number) => void;
@@ -30,7 +29,14 @@ class Kinetic extends React.Component<Props> {
             }
             return;
         }
-        this._mapInstance = new VanillaKinetic(ref, {});
+        this._mapInstance = new VanillaKinetic(ref, {
+            filterTarget: (e) => {
+                if ((e.target as HTMLElement | undefined)?.nodeName.toLowerCase() === "button") {
+                    return false;
+                }
+                return true;
+            },
+        });
         this._mapInstance.on("zoom", this.props.onZoom);
         this._mapInstance.center();
 
@@ -75,6 +81,10 @@ class Kinetic extends React.Component<Props> {
         }
     };
 
+    private readonly _handleButtonClick = () => {
+        alert("clicked");
+    };
+
     public render() {
         return (
             <>
@@ -83,6 +93,7 @@ class Kinetic extends React.Component<Props> {
                 <div ref={this.onContainerRef} className={styles.container}>
                     <div className={styles.middle}>
                         <img src={"https://i.imgur.com/6UhKWdy.jpeg"} alt={"Wallpaper"} onLoad={this.handleImageLoad} />
+                        <button onClick={this._handleButtonClick}>click me!</button>
                     </div>
                 </div>
             </>

@@ -1,0 +1,20 @@
+.container {
+    width: 300px;
+    height: 300px;
+    overflow: hidden;
+
+    img {
+        display: block;
+    }
+}
+
+.middle {
+    position: relative;
+
+    button {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+
+    }
+}
