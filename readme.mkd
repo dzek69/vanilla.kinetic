@@ -8,7 +8,7 @@ Note from Dave:
 > This code has been pretty stable for a while (with it's few restrictions) and so am not actively making changes. If you want to improve it in any way feel free to submit a pull request (with tests) and we will merge in any that make sense and don't add bloat to what is a simple plugin.
 
 Note from me:
-> As plugin seemed pretty stable, but I needed no-dependency version - I removed all jQuery stuff and replaced it with Vanilla calls. I'll try to follow updates from original project, but I cannot guarrante it. Feel free to make a PR if needed.
+> As plugin seemed pretty stable, but I needed no-dependency version - I removed all jQuery stuff and replaced it with Vanilla calls. I'll try to follow updates from original project, but I cannot guarantee it. Feel free to make a PR if needed.
 
 vanilla.kinetic is a simple plugin which adds smooth drag scrolling with gradual deceleration to containers. It is based on [jQuery.kinetic](https://github.com/davetayls/jquery.kinetic/).
 
