@@ -1,6 +1,7 @@
 import React from "react";
+
 import { Kinetic } from "../demo/Kinetic.js";
-import { TouchTest } from "../demo/TouchTest";
+import { TouchTest } from "../demo/TouchTest.js";
 
 interface Props {}
 
@@ -23,7 +24,7 @@ class IndexComp extends React.Component<Props, State> {
         this.setState({ zoom, zoomStep });
     };
 
-    public render() {
+    public override render() {
         return (
             <>
                 <div>

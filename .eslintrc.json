@@ -3,7 +3,9 @@
     "extends": [
         "@dzek69/eslint-config-base",
         "@dzek69/eslint-config-typescript",
-        "@dzek69/eslint-config-react"
+        "@dzek69/eslint-config-react",
+        "@dzek69/eslint-config-import",
+        "@dzek69/eslint-config-import-typescript"
     ],
     "env": {
         "node": true,
@@ -35,6 +37,14 @@
                 "@typescript-eslint/no-unsafe-member-access": "off",
                 "no-unused-labels": "off"
             }
+        },
+        {
+            "files": [
+                "src/pages/**.*"
+            ],
+            "rules": {
+                "import/no-default-export": "off"
+            }
         }
     ],
     "rules": {
@@ -44,8 +54,7 @@
         "react": {
             "createClass": "createReactClass",
             "pragma": "React",
-            "version": "detect",
-            "flowVersion": "detect"
+            "version": "detect"
         },
         "propWrapperFunctions": []
     }

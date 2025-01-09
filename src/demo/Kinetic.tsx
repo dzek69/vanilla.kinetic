@@ -1,5 +1,6 @@
 import type { SyntheticEvent } from "react";
 import React from "react";
+
 import { VanillaKinetic } from "..";
 
 import styles from "./Kinetic.module.scss";
@@ -13,7 +14,7 @@ class Kinetic extends React.Component<Props> {
         super(props);
     }
 
-    public shouldComponentUpdate() {
+    public override shouldComponentUpdate() {
         return false;
     }
 
@@ -55,13 +56,16 @@ class Kinetic extends React.Component<Props> {
 
     private readonly _handleAttachDetach = () => {
         if (!this._mapInstance) {
+            console.warn("No map instance");
             return;
         }
 
         if (this._mapInstance.active) {
+            console.info("Destroying");
             this._mapInstance.destroy();
         }
         else {
+            console.info("Reinitializing");
             this._mapInstance.reinitialize();
         }
     };
@@ -85,7 +89,7 @@ class Kinetic extends React.Component<Props> {
         alert("clicked");
     };
 
-    public render() {
+    public override render() {
         return (
             <>
                 <button onClick={this._handleAttachDetach}>attach / detach</button>

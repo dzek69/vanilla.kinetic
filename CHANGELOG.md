@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [UNRELEASED]
 (nothing yet)
 
+## [3.0.0-alpha.5] - 2023-06-10
+### Dev
+- upgraded dependencies
+### Changed
+- moved react out of dependencies
+
 ## [3.0.0-alpha.4] - 2022-01-14
 ### Added
 - ability to pass events to some elements

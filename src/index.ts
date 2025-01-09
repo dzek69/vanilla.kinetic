@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 
 import { EventEmitter } from "eventemitter3";
+
 import type { KineticEvents } from "./types";
 
 interface Settings {
@@ -59,7 +60,6 @@ interface Settings {
         down: string;
         left: string;
         right: string;
-
     };
     maxZoomStep: number;
     filterTarget?: (evt: Event) => boolean;
@@ -135,42 +135,31 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
 
     private readonly _activeClass: string;
 
+    private _xpos: number | null = null;
+
+    private _prevXPos: number | null = null;
+
+    private _ypos: number | null = null;
+
+    private _prevYPos: number | null = null;
+
+    private _mouseDown: boolean = false;
+
+    private _throttleTimeout: number = 0;
+
+    private _lastMove: Date | null = null;
+
+    private _elementFocused: HTMLElement | null = null;
+
+    private _velocityX: number = 0;
+
+    private _velocityY: number = 0;
+
+    private _threshold: number = 0;
+
     // @TODO fix those errors
     // @ts-expect-error Not in a constructor
-    private _xpos: number | null;
-
-    // @ts-expect-error Not in a constructor
-    private _prevXPos: number | null;
-
-    // @ts-expect-error Not in a constructor
-    private _ypos: number | null;
-
-    // @ts-expect-error Not in a constructor
-    private _prevYPos: number | null;
-
-    // @ts-expect-error Not in a constructor
-    private _mouseDown: boolean;
-
-    // @ts-expect-error Not in a constructor
-    private _throttleTimeout: number;
-
-    // @ts-expect-error Not in a constructor
-    private _lastMove: Date | null;
-
-    // @ts-expect-error Not in a constructor
-    private _elementFocused: HTMLElement | null;
-
-    // @ts-expect-error Not in a constructor
-    private _velocityX: number;
-
-    // @ts-expect-error Not in a constructor
-    private _velocityY: number;
-
-    // @ts-expect-error Not in a constructor
-    private _threshold: number;
-
-    // @ts-expect-error Not in a constructor
-    private _events: {
+    private _kineticEvents: {
         touchStart: (e: TouchEvent) => void;
         touchMove: (e: TouchEvent) => void;
         touchEnd: (e: TouchEvent) => void;
@@ -184,14 +173,12 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
         selectStart: (e: Event) => void;
     };
 
-    // @ts-expect-error Not in a constructor
-    private _moving: boolean;
+    private _moving: boolean = false;
 
     // @ts-expect-error Not in a constructor
-    private _naturalContentDimensions: number[];
+    private _naturalContentDimensions: [number, number];
 
-    // @ts-expect-error Not in a constructor
-    private _zoom: number;
+    private _zoom: number = 1;
 
     private _active: boolean;
 
@@ -313,7 +300,7 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
 
     // eslint-disable-next-line max-lines-per-function
     private _initEvents() {
-        this._events = {
+        this._kineticEvents = {
             // eslint-disable-next-line max-statements
             touchStart: (e) => {
                 if (!this._useTarget(e)) {
@@ -321,11 +308,11 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                 }
 
                 this._currentTouches = e.touches.length;
-                const touch0 = getOffset(e.touches[0], this._el.children[0] as HTMLElement);
+                const touch0 = getOffset(e.touches[0]!, this._el.children[0] as HTMLElement);
 
                 // eslint-disable-next-line @typescript-eslint/no-magic-numbers
                 if (this._currentTouches === 2) {
-                    const touch1 = getOffset(e.touches[1], this._el.children[1] as HTMLElement);
+                    const touch1 = getOffset(e.touches[1]!, this._el.children[1] as HTMLElement);
                     const xx = [touch0.x, touch1.x];
                     const yy = [touch0.y, touch1.y];
 
@@ -346,7 +333,7 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                     this._touchLastDistance = this._touchInitialDistance;
                 }
 
-                const touch = e.touches[0];
+                const touch = e.touches[0]!;
                 this._threshold = this._calcThreshold(e.target, e);
                 this._start(touch.clientX, touch.clientY);
                 e.stopPropagation();
@@ -356,7 +343,7 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                 let touch;
                 if (this._mouseDown) {
                     if (this._currentTouches === 1) {
-                        touch = e.touches[0];
+                        touch = e.touches[0]!;
                         this._inputmove(touch.clientX, touch.clientY);
                         e.preventDefault();
                     }
@@ -365,8 +352,8 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                     else if (this._currentTouches === 2) {
                         e.preventDefault();
 
-                        const touch0 = getOffset(e.touches[0], this._el.children[0] as HTMLElement);
-                        const touch1 = getOffset(e.touches[1], this._el.children[1] as HTMLElement);
+                        const touch0 = getOffset(e.touches[0]!, this._el.children[0] as HTMLElement);
+                        const touch1 = getOffset(e.touches[1]!, this._el.children[1] as HTMLElement);
 
                         const currentDistance = VanillaKinetic.getDistanceBetweenPoints(
                             [touch0.x, touch0.y],
@@ -410,7 +397,7 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
                     // just tap
                 }
                 else if (this._currentTouches === 1) {
-                    const touch = e.touches[0];
+                    const touch = e.touches[0]!;
                     this._start(touch.clientX, touch.clientY);
                 }
             },
@@ -497,39 +484,39 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
     private readonly _attachListeners = () => {
         const el = this._el;
 
-        el.addEventListener("touchstart", this._events.touchStart, false);
-        el.addEventListener("touchend", this._events.touchEnd, false);
-        el.addEventListener("touchmove", this._events.touchMove, false);
+        el.addEventListener("touchstart", this._kineticEvents.touchStart, false);
+        el.addEventListener("touchend", this._kineticEvents.touchEnd, false);
+        el.addEventListener("touchmove", this._kineticEvents.touchMove, false);
 
-        el.addEventListener("mousedown", this._events.inputDown, false);
-        el.addEventListener("mouseup", this._events.inputEnd, false);
-        el.addEventListener("mousemove", this._events.inputMove, false);
+        el.addEventListener("mousedown", this._kineticEvents.inputDown, false);
+        el.addEventListener("mouseup", this._kineticEvents.inputEnd, false);
+        el.addEventListener("mousemove", this._kineticEvents.inputMove, false);
 
-        el.addEventListener("click", this._events.inputClick, false);
-        el.addEventListener("scroll", this._events.scroll, false);
-        el.addEventListener("selectstart", this._events.selectStart, false);
-        el.addEventListener("dragstart", this._events.dragStart, false);
+        el.addEventListener("click", this._kineticEvents.inputClick, false);
+        el.addEventListener("scroll", this._kineticEvents.scroll, false);
+        el.addEventListener("selectstart", this._kineticEvents.selectStart, false);
+        el.addEventListener("dragstart", this._kineticEvents.dragStart, false);
 
-        el.addEventListener("wheel", this._events.wheel, true);
+        el.addEventListener("wheel", this._kineticEvents.wheel, true);
     };
 
     private readonly _detachListeners = () => {
         const el = this._el;
 
-        el.removeEventListener("touchstart", this._events.touchStart, false);
-        el.removeEventListener("touchend", this._events.touchEnd, false);
-        el.removeEventListener("touchmove", this._events.touchMove, false);
+        el.removeEventListener("touchstart", this._kineticEvents.touchStart, false);
+        el.removeEventListener("touchend", this._kineticEvents.touchEnd, false);
+        el.removeEventListener("touchmove", this._kineticEvents.touchMove, false);
 
-        el.removeEventListener("mousedown", this._events.inputDown, false);
-        el.removeEventListener("mouseup", this._events.inputEnd, false);
-        el.removeEventListener("mousemove", this._events.inputMove, false);
+        el.removeEventListener("mousedown", this._kineticEvents.inputDown, false);
+        el.removeEventListener("mouseup", this._kineticEvents.inputEnd, false);
+        el.removeEventListener("mousemove", this._kineticEvents.inputMove, false);
 
-        el.removeEventListener("click", this._events.inputClick, false);
-        el.removeEventListener("scroll", this._events.scroll, false);
-        el.removeEventListener("selectstart", this._events.selectStart, false);
-        el.removeEventListener("dragstart", this._events.dragStart, false);
+        el.removeEventListener("click", this._kineticEvents.inputClick, false);
+        el.removeEventListener("scroll", this._kineticEvents.scroll, false);
+        el.removeEventListener("selectstart", this._kineticEvents.selectStart, false);
+        el.removeEventListener("dragstart", this._kineticEvents.dragStart, false);
 
-        el.removeEventListener("wheel", this._events.wheel, true);
+        el.removeEventListener("wheel", this._kineticEvents.wheel, true);
     };
 
     private readonly _useTarget = (evt: Event) => {
@@ -787,7 +774,7 @@ class VanillaKinetic extends EventEmitter<KineticEvents> {
     private readonly _applyZoom = (
         targetZoomStep: number | "fit", currentZoomStep: number, x?: number | Percent, y?: number | Percent,
     ): [boolean, number] => {
-        if (targetZoomStep > this._settings.maxZoomStep) {
+        if (Number(targetZoomStep) > this._settings.maxZoomStep) {
             return [false, currentZoomStep];
         }
 

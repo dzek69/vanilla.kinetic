@@ -2,7 +2,7 @@
 /build-scripts/
 /test/
 
-/babel.config.cjs
+/babel.config.js
 /jest.config.cjs
 /yarn.lock
 /*.tgz
@@ -17,3 +17,7 @@
 /src/pages
 /dist/pages
 /esm/pages
+
+/pagesconfig.json
+/esm/demo
+/next-env.d.ts

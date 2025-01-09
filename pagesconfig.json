@@ -1,7 +1,6 @@
 {
-    "groups": [
-        {
-            "title": "Tutorials"
-        }
-    ]
+    "pages": [
+        null
+    ],
+    "source": "tutorials"
 }

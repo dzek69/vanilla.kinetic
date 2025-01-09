@@ -16,9 +16,6 @@ const container = document.getElementById("container");
 const instance = new VanillaKinetic(container);
 ```
 
-> Note: Your container must have a single child element with a class `kinetic-middle`. Put the contents inside.
-> This library requires it but avoids adding it to prevent surprising devs with unexpected wrapper element.
-
 ### React
 
 > React wrapper will come soon.
